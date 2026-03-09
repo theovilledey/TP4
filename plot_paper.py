@@ -4,11 +4,12 @@ import qutip
 import scipy
 import itertools
 
-def beta_function(gamma,g,kappa,nt): # nt the number of time steps
+def beta_function(gamma,g,kappa,nt,t_max=None): # returns (t, beta_t): time grid and cumulative beta up to t_max, with nt time steps
 
     gamma_star = 1e4*gamma
     # time grid
-    t_max = 1 # 100/min(g,kappa) 
+    if t_max is None:
+        t_max = 100/min(g,kappa)
     t = np.linspace(0,t_max,nt)
 
     # for basis we want <a.dag*a> number operator on cavity so it's projector on |g1>
@@ -33,65 +34,55 @@ def beta_function(gamma,g,kappa,nt): # nt the number of time steps
 
     return t,beta_t
 
-def relat_converg(beta_t,tol):
+def relat_converg(beta_t,tol): # returns first index where remaining rise < tol * total rise, or None if never flat
 
-    rel_diff = np.abs(np.diff(beta_t)) / np.abs(beta_t[:-1])
-    idx = np.where(rel_diff<tol)[0][0] + 1
+    total = beta_t[-1] - beta_t[0]
+    if total == 0:
+        return 0
+    remaining = (beta_t[-1] - beta_t) / total  # fraction of total rise still to come
+    indices = np.where(remaining < tol)[0]
+    if len(indices) == 0:
+        return None
+    return indices[0]
 
-    return idx
+def find_t_max(gamma,g,kappa,nt_coarse=200,tol=0.005,max_doublings=15): # finds t_max such that beta_t converges well before the end, by doubling from 100/min(g,kappa)
+    t_max = 100/min(g,kappa)
+    for _ in range(max_doublings):
+        t,beta_t = beta_function(gamma,g,kappa,nt=nt_coarse,t_max=t_max)
+        idx = relat_converg(beta_t,tol)
+        if idx is not None and idx < int(0.9*len(t)):
+            return t_max
+        t_max *= 2
+    raise RuntimeError(f"beta_t did not converge after {max_doublings} doublings (t_max={t_max:.3e})")
 
-# testing values to get a feeling
+# relative change in final beta value as nt doubles
+rel_diff_nt = np.abs(np.diff(beta_finals)) / np.abs(beta_finals[:-1])
+print("rel change in beta_final as nt doubles:", rel_diff_nt)
+
+# testing convergence for a single (g, kappa) point
+gamma = 1
+g     = 10e3
+kappa = 10e6
+t_max = find_t_max(gamma, g, kappa)
+print(f"Converged t_max = {t_max:.3e}")
+nt_test = [200, 400, 800, 1600, 3200]
 beta_finals = []
-nt_test = np.array([200])
-for i in nt_test:
-    t,beta_t = beta_function(gamma=1,g=10e3,kappa=10e6,nt=i)
-    print("x value:", t[relat_converg(beta_t,0.005)])
+for nt in nt_test:
+    t, beta_t = beta_function(gamma, g, kappa, nt=nt, t_max=t_max)
     beta_finals.append(beta_t[-1])
-    plt.plot(t,beta_t,'.',label=f'nt={i}')
+    plt.plot(t, beta_t, label=f'nt={nt}')
+plt.xlabel('t')
+plt.ylabel('beta(t)')
+plt.legend()
+plt.title(f'nt convergence — g={g:.1e}, kappa={kappa:.1e}, t_max={t_max:.2e}')
 plt.show()
 
+# MISSING STEPS: 
+# 1 - FIND CONVERGED PARAMETERS NT AND T_MAX FOR (k,g)
+# 2 - STORE THEM IN 2D GRIP
+# 3 - RUN COMPUTATION OF BETA
+# 4 - PLOT BETA
 
-
-# # running nt convergence
-# beta_finals = []
-# nt_test = nt_test = np.array([200,400,800,1600,3200,6400])
-# for i in nt_test:
-#     t,beta_t = beta_function(gamma=1,g=1000,kappa=0.1,nt=i)
-#     beta_finals.append(beta_t[-1])
-#     plt.plot(t,beta_t,label=f'nt={i}')
-# plt.show()
-
-# # showing the progression of precision
-# rel_diff = np.abs(np.diff(beta_finals))/np.abs(beta_finals[:-1])
-# # mid_nt = np.sqrt(nt_test[1:]*nt_test[:-1])
-# plt.plot(nt_test,beta_finals,'+')
-# plt.xscale('log')
-# plt.show()
-# print(rel_diff)
-
-# STEPS TO DO
-# running convergence for the grid (tells us what nt for each)
-# use convergence to see strong variations, make a mesh of points
-# # then run the convergence with the right parameters
-
-# # make the kappa/gamma and g/gamma ranges (n^2 points for now, make n and m different?)
-# n_axis=9
-# kappa_vals = np.logspace(-2,6,n_axis)
-# g_vals = np.logspace(-2,6,n_axis)
-# converged_nt = np.zeros((n_axis,n_axis))
-# nt_test = np.array([200,400,800,1600,3200,6400])
-# for i,kappa_temp in enumerate(kappa_vals):
-#     for j, g_temp in enumerate(g_vals):
-#         print(f"Doing point kappa={kappa_temp:.3e}, g={g_temp:.3e} ...")
-#         beta_last = 0
-#         for k in nt_test:
-#             t,beta_t = beta_function(gamma=1,g=g_temp,kappa=kappa_temp,nt=k)
-#             rel_diff = np.abs(beta_t[-1]-beta_last)/np.abs(beta_t[-1])
-#             beta_last = beta_t[-1]
-#             if rel_diff < 0.01:
-#                 converged_nt[j,i] = k
-#                 print(f"Converged at nt={k} (rel_diff={rel_diff:.3e})")
-#                 break
-# print(converged_nt)
-
-# use itertools and parallelmap to compute using all cores. 
+# STEP 1 LOGIC
+# compute beta with a small nt until we get a converegnce (flat tail) -> t_max
+# use that t_max and increase nt until it doesn't change result  
