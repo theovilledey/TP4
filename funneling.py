@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import LogLocator
 from scipy.linalg import eig
-import warnings
-warnings.filterwarnings('ignore')
+import plot_utils
 
 def compute_beta(g, kappa, gamma, gamma_star):
     M = np.array([
@@ -60,13 +59,12 @@ gamma = 1e0
 gamma_star = 2090 * gamma 
 grid_size = 90
 
+# grid
 g_vals = np.logspace(-2, 6, grid_size)
 k_vals = np.logspace(-2, 6, grid_size)
-
 beta_array = np.zeros((len(k_vals), len(g_vals)))
 I_array = np.zeros((len(k_vals), len(g_vals)))
 product_array = np.zeros((len(k_vals), len(g_vals)))
-
 for i, kappa in enumerate(k_vals):
     for j, g in enumerate(g_vals):
         b = compute_beta(g * gamma, kappa * gamma, gamma, gamma_star)
@@ -74,16 +72,17 @@ for i, kappa in enumerate(k_vals):
         beta_array[i, j]    = b
         I_array[i, j]       = I
         product_array[i, j] = b * I
-
 Kx, Gy = np.meshgrid(k_vals, g_vals)
 product_plot = product_array.T 
 
+#plot
 fig, ax = plt.subplots(figsize=(10, 8))
 vmin = product_plot[product_plot > 0].min()
 vmax = 1e0
-levels = np.logspace(np.log10(vmin), np.log10(vmax), 50)
-contour = ax.contourf(Kx, Gy, product_plot, levels=levels, cmap='jet', norm=LogNorm(vmin=vmin, vmax=vmax))
-plt.colorbar(contour, ax=ax, label=r'Funneling ratio', ticks=LogLocator(base=10))
+mesh = ax.pcolormesh(Kx, Gy, product_plot, cmap='jet',norm=LogNorm(vmin=vmin, vmax=vmax), shading='auto')
+plt.colorbar(mesh, ax=ax, label=r'Funneling ratio', ticks=LogLocator(base=10))
+# contour_levels = [] # comment or remove for no contours
+# plot_utils.add_labeled_contours(ax, product_plot, contour_levels, Kx, Gy)
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlim(1e-2, 1e6)
@@ -91,22 +90,6 @@ ax.set_ylim(1e-2, 1e6)
 ax.set_xlabel(r'$\kappa/\gamma$', fontsize=12)
 ax.set_ylabel(r'$g/\gamma$', fontsize=12)
 ax.grid(True, alpha=0.2, linestyle=':')
-
-
-# plotting litterature values (remove if needed)
-k_points = np.array([12.8, 5.7, 0.57])
-g_points = np.array([81,   72,  1.3])
-# [3275, 320, 1544, 12.8, 5.7, 0.57]
-# [45,   5.8, 180,  81,   72,  1.3]
-
-labels = ["System 4","System 5","System 6"]
-markers = ["o","s","*"]
-
-for k, g, lab, m in zip(k_points, g_points, labels, markers):
-    ax.scatter(k,g,s=80,zorder=5,label=lab,marker=m,color="black")
-ax.legend(fontsize=9, loc='best')
-"""
-"""
-
+plot_utils.add_literature_points(ax, "B") # comment to not show
 plt.tight_layout()
 plt.show()

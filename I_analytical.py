@@ -2,8 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import eig
-import warnings
-warnings.filterwarnings('ignore')
+import plot_utils 
 
 def liouvillian_matrix(g, kappa, gamma, gamma_star, delta):
     # vectorize the density matrix (rho_ee,rho_cc,Re(rho_ec),Im(rho_ec))
@@ -68,8 +67,7 @@ def single_time_intensity_func(t, g, kappa, gamma, gamma_star, delta):
     _,rho_cc,_ = density_matrix_components(t, g, kappa, gamma, gamma_star, delta)
     return rho_cc
 
-# analytical by eigendecomposition (eq. 16 supplement) - exact solution
-# use closed form ∫exp(xt)dt=-1/x possible as Re(x<0) (express all as complex exp)
+# analytical by eigendecomposition (eq. 16 supplement) - exact solution - closed form
 def compute_indistinguishability(g, kappa, gamma, gamma_star, delta=0):
     # 1 - Liouvillian eigendecompostition to express rho as sum of exp
     # rho(t) = e^(Lt) rho(0) = V e^(Λt) V^-1 rho(0) = Σ_i e^(λ_i t) |ψ_i><ψ_i| rho(0)
@@ -107,7 +105,9 @@ def compute_indistinguishability(g, kappa, gamma, gamma_star, delta=0):
 # parameters
 gamma = 1e0
 gamma_star = 2090 * gamma
-grid_size = 90
+grid_size = 900
+SHOW_LITERATURE = False # add the systems as points on the plots?
+EMITTER = "B" # add the systems of which emitter?
 
 # grid
 g_vals = np.logspace(-2,6,grid_size)
@@ -133,9 +133,8 @@ for i, kappa in enumerate(k_vals):
 Kx, Gy = np.meshgrid(k_vals, g_vals) # Kx[i,j]=k_vals[j],Gy[i,j]=g_vals[i]
 I_plot = I_array.T # I_plot[i,j] = I(g=g_vals[i], κ=k_vals[j])
 fig, ax = plt.subplots(figsize=(10, 8))
-levels = np.linspace(0, 1, 50)
-contour = ax.contourf(Kx, Gy, I_plot,levels=levels, cmap='jet')
-cbar = plt.colorbar(contour, ax=ax, label='Indistinguishability I')
+mesh = ax.pcolormesh(Kx, Gy, I_plot, vmin=0, vmax=1, cmap='jet', shading='auto')
+cbar = plt.colorbar(mesh, ax=ax, label='Indistinguishability I')
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlim(1e-2, 1e6)
@@ -143,22 +142,9 @@ ax.set_ylim(1e-2, 1e6)
 ax.set_xlabel('κ/γ', fontsize=12)
 ax.set_ylabel('g/γ', fontsize=12)
 ax.grid(True, alpha=0.2, linestyle=':')
-
-"""
-# plotting litterature values (remove if needed)
-k_points = np.array([12.8, 5.7, 0.57])
-g_points = np.array([81,   72,  1.3])
-# [3275, 320, 1544, 12.8, 5.7, 0.57]
-# [45,   5.8, 180,  81,   72,  1.3]
-
-labels = ["System 4","System 5","System 6"]
-markers = ["o","s","*"]
-
-for k, g, lab, m in zip(k_points, g_points, labels, markers):
-    ax.scatter(k,g,s=80,zorder=5,label=lab,marker=m,color="black")
-ax.legend(fontsize=9, loc='best')
-
-"""
-
+levels = [0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 0.999]
+plot_utils.add_labeled_contours(ax, I_plot, levels, Kx, Gy)
+if SHOW_LITERATURE:
+    plot_utils.add_literature_points(ax, EMITTER)
 plt.tight_layout()
 plt.show()

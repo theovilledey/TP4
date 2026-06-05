@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import plot_utils
 
 def compute_beta(g, kappa, gamma, gamma_star):
     M = np.array([
@@ -14,13 +15,14 @@ def compute_beta(g, kappa, gamma, gamma_star):
 # parameters (note I put the ratios)
 gamma = 1e0
 gamma_star = 12502 *gamma
-grid_size = 90
+grid_size = 900
+SHOW_LITERATURE = False # plots the system?
+EMITTER = "A" # which systems to plot?
 
 # grid (be careful put the ratios here not just the values)
 g_vals = np.logspace(-2,6,grid_size)
 k_vals = np.logspace(-2,6,grid_size)
 beta_array = np.zeros((len(k_vals), len(g_vals)))
-
 for i, kappa in enumerate(k_vals):
     for j, g in enumerate(g_vals):
         beta_array[i, j] = compute_beta(g * gamma, kappa * gamma, gamma, gamma_star)
@@ -28,32 +30,17 @@ for i, kappa in enumerate(k_vals):
 # plotting — kappa on x-axis, g on y-axis
 Kx, Gy = np.meshgrid(k_vals, g_vals)
 beta_plot = beta_array.T  # beta_plot[i,j] = beta(g=g_vals[i], kappa=k_vals[j])
-
 fig, ax = plt.subplots(figsize=(10, 8))
-levels = np.linspace(0, 1, 50)
-contour = ax.contourf(Kx, Gy, beta_plot, levels=levels, cmap='jet')
-plt.colorbar(contour, ax=ax, label='Beta factor β')
+mesh = ax.pcolormesh(Kx, Gy, beta_plot, vmin=0, vmax=1, cmap='jet', shading='auto')
+plt.colorbar(mesh, ax=ax, label='Beta factor β')
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlabel('κ/γ', fontsize=12)
 ax.set_ylabel('g/γ', fontsize=12)
 ax.grid(True, alpha=0.2, linestyle=':')
-
-"""
-# plotting litterature values (remove if needed)
-k_points = np.array([3275, 320, 1544])
-g_points = np.array([45,   5.8, 180])
-# [3275, 320, 1544, 12.8, 5.7, 0.57]
-# [45,   5.8, 180,  81,   72,  1.3]
-
-labels = ["System 1","System 2","System 3"]
-markers = ["o","s","*"]
-
-for k, g, lab, m in zip(k_points, g_points, labels, markers):
-    ax.scatter(k,g,s=80,zorder=5,label=lab,marker=m,color="black")
-ax.legend(fontsize=9, loc='best')
-
-"""
-
+levels = [0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 0.999]
+plot_utils.add_labeled_contours(ax, beta_plot, levels, Kx, Gy)
+if SHOW_LITERATURE:
+    plot_utils.add_literature_points(ax, EMITTER)
 plt.tight_layout()
 plt.show()
