@@ -106,7 +106,7 @@ def compute_indistinguishability(g, kappa, gamma, gamma_star, delta=0):
 
 # parameters
 gamma = 1e0
-gamma_star = 1e2 * gamma
+gamma_star = 2090 * gamma
 grid_size = 90
 
 # grid
@@ -144,15 +144,21 @@ ax.set_xlabel('κ/γ', fontsize=12)
 ax.set_ylabel('g/γ', fontsize=12)
 ax.grid(True, alpha=0.2, linestyle=':')
 
+"""
 # plotting litterature values (remove if needed)
-k_points = np.array([3275, 320, 1544])
-g_points = np.array([45,   5.8, 180])
+k_points = np.array([12.8, 5.7, 0.57])
+g_points = np.array([81,   72,  1.3])
 # [3275, 320, 1544, 12.8, 5.7, 0.57]
 # [45,   5.8, 180,  81,   72,  1.3]
-labels = ["Device 1","Device 2","Device 3"]
-for k, g, lab, in zip(k_points, g_points, labels):
-    ax.scatter(k,g,s=80,zorder=5,label=lab)
+
+labels = ["System 4","System 5","System 6"]
+markers = ["o","s","*"]
+
+for k, g, lab, m in zip(k_points, g_points, labels, markers):
+    ax.scatter(k,g,s=80,zorder=5,label=lab,marker=m,color="black")
 ax.legend(fontsize=9, loc='best')
+
+"""
 
 plt.tight_layout()
 plt.show()
